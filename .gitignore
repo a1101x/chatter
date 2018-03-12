@@ -1,0 +1,16 @@
+
+.DS_Store
+.vscode/
+.idea/
+*.pyc
+*.pyo
+*.mo
+__pycache__/
+venv/
+static/
+media/
+
+db.sqlite3
+celerybeat-schedule
+celerybeat.pid
+.coverage
