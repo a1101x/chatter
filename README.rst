@@ -4,7 +4,7 @@ Running backend
 
 System packages
 ---------------
-First, you need to install postgresql server, redis, elasticsearch, and rabbitmq.
+First, you need to install postgresql server, redis, elasticsearch and rabbitmq.
 
 
 Database
@@ -68,8 +68,24 @@ Celery:
 --------
 .. code:: sh
 
+  celery worker -A chatter
+  celery -A chatter beat
+
+
+OR Celery:
+--------
+
+.. code:: sh
+
   celery worker -A chatter --without-gossip --without-mingle --without-heartbeat
   celery -A chatter beat
+
+
+Flower:
+--------
+.. code:: sh
+
+  flower -A chatter
 
 
 Content
