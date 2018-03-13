@@ -7,6 +7,7 @@ ENVIRONMENT_TYPE = env.str('ENVIRONMENT_TYPE', default='development')
 api_urlpatterns = [
     path('user/', include('apps.user.urls')),
     path('user/', include('rest_auth.urls')),
+    path('location/', include('apps.location.urls')),
 ]
 
 urlpatterns = [

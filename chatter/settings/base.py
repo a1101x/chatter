@@ -21,7 +21,9 @@ INSTALLED_APPS = [
     'django.contrib.gis',
 
     # third party apps
+    'channels',
     'rest_framework',
+    'rest_framework_gis',
     'rest_framework_jwt',
     'rest_auth',
     'allauth',
@@ -195,4 +197,14 @@ EMAIL_TEMPLATE_DEFAULTS = {
 
 REST_AUTH_SERIALIZERS = {
     'USER_DETAILS_SERIALIZER': 'apps.user.serializers.JWTUserSerializer',
+}
+
+ASGI_APPLICATION = 'chatter.routing.application'
+CHANNEL_LAYERS = {
+    'default': {
+        'BACKEND': 'channels_redis.core.RedisChannelLayer',
+        'CONFIG': {
+            'hosts': [('localhost', 6379)],
+        },
+    },
 }

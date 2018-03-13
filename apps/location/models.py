@@ -83,4 +83,4 @@ class Location(models.Model):
         verbose_name_plural = _('Locations')
 
     def __str__(self):
-        return '{} - {}, {}, {}'.format(self.user, self.country, self.city, self.street)
+        return '{}'.format(self.user)

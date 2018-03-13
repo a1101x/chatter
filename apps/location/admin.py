@@ -19,10 +19,9 @@ class LocationAdmin(admin.ModelAdmin):
         (_('Point'), {'fields': ('point',)})
     )
     raw_id_fields = ('user',)
-    list_display = ('user', 'country', 'city', 'zipcode', 'point')
+    list_display = ('user', 'city', 'zipcode', 'point')
     search_fields = ('user__email', 'user__username', 'country', 'city', 'zipcode', 'state')
     ordering = ('user__username', 'user__email')
-
 
 
 @admin.register(Zipcode)

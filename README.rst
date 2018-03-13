@@ -4,7 +4,7 @@ Running backend
 
 System packages
 ---------------
-First, you need to install postgresql server, redis, elasticsearch and rabbitmq.
+First, you need to install postgresql server, postgresql postgis scripts, redis, elasticsearch and rabbitmq.
 
 
 Database
@@ -26,6 +26,7 @@ PostGis
 --------
 .. code:: sh
 
+  sudo -u postgres createuser <user_name>
   sudo -u <user_name> psql chatter
 
 .. code:: postgres
@@ -59,6 +60,12 @@ Run server
 .. code:: sh
 
   ./manage.py runserver
+
+Run daphne server
+
+.. code:: sh
+
+  daphne -p 8001 chatter.asgi:application
 
 | A list of api methods at http://localhost:8000/swagger/
 | Django admin is at http://localhost:8000/admin/
