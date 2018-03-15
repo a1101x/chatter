@@ -8,6 +8,7 @@ from rest_framework.validators import UniqueValidator
 from apps.mailer.choices import EMAIL_TYPES
 from apps.mailer.tasks import send_templated_email
 from apps.phone.models import Phone
+from apps.user.models import UserActivationCode
 from apps.user.utils import generate_pin_code
 
 User = get_user_model()
@@ -28,7 +29,7 @@ class UserRegistrationSerializer(serializers.ModelSerializer):
     """
     # Phone
     phone_number = serializers.RegexField(
-        regex=r'^\d{9,15}$', required=False,
+        regex=r'^\+\d{9,15}$', required=False,
         validators=[
             UniqueValidator(
                 queryset=Phone.objects.all(),
@@ -36,8 +37,9 @@ class UserRegistrationSerializer(serializers.ModelSerializer):
             )
         ],
         error_messages={
-            'invalid': _('Phone number must contain only numbers.')
-        }
+            'invalid': _('Phone number must starts with + and contain only numbers.')
+        },
+        write_only=True
     )
 
     class Meta:
@@ -86,10 +88,66 @@ class UserRegistrationSerializer(serializers.ModelSerializer):
 
         if phone is not None:
             Phone.objects.create(user=user, phone_number=phone)
-
+        
+        pin_code = generate_pin_code()
+        code = UserActivationCode(user=user, code=pin_code)
+        code.save()
         send_templated_email.delay(
             key=EMAIL_TYPES.USER_ACTIVATION,
             recipient_list=validated_data.get('email'),
-            context={'code': generate_pin_code()}
+            context={'code': pin_code}
         )
         return user
+
+
+class ActivationCodeSerializer(serializers.ModelSerializer):
+    """
+    Base serializer for user activation.
+    """
+    email = serializers.EmailField(write_only=True)
+
+    class Meta:
+        model = UserActivationCode
+        fields = ('email',)
+
+    def validate_email(self, value):
+        """
+        Checks whether the user exists and is user inactive.
+        """
+        try:
+            self.user = User.objects.get(email__iexact=value)
+
+            if self.user.is_active:
+                raise serializers.ValidationError(
+                    _('User account is already activated.'),
+                    code=status.HTTP_400_BAD_REQUEST
+                )
+        except User.DoesNotExist:
+            raise serializers.ValidationError(
+                _('User with this email does not exist.'),
+                code=status.HTTP_400_BAD_REQUEST
+            )
+
+        return value
+
+
+class SendActivationCodeSerializer(ActivationCodeSerializer):
+    """
+    Send user activation code.
+    """
+    def create(self, validated_data):
+        """
+        Creates a model in db after email validation.
+        """
+        pin_code = generate_pin_code()
+        send_templated_email.delay(
+            key=EMAIL_TYPES.USER_ACTIVATION,
+            recipient_list=validated_data.get('email'),
+            context={'code': pin_code}
+        )
+        user_activation_code = UserActivationCode(
+            user=self.user,
+            code=pin_code
+        )
+        user_activation_code.save()
+        return user_activation_code

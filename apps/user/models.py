@@ -112,11 +112,10 @@ class User(AbstractUser):
 
 
 class UserActivationCode(models.Model):
-    user = models.OneToOneField(
+    user = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         verbose_name=_('User'),
         on_delete=models.CASCADE,
-        primary_key=True,
         related_name='code'
     )
     code = models.CharField(
@@ -129,17 +128,21 @@ class UserActivationCode(models.Model):
         default=default_time_expired,
         db_index=True
     )
+    created = models.DateTimeField(
+        _('Creation time'),
+        auto_now_add=True,
+        db_index=True
+    )
 
     def __str__(self):
         return '{} - {}'.format(self.user, self.code)
 
 
 class ChangeEmailCode(models.Model):
-    user = models.OneToOneField(
+    user = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         verbose_name=_('User'),
         on_delete=models.CASCADE,
-        primary_key=True,
         related_name='email_code'
     )
     code = models.CharField(
@@ -157,6 +160,11 @@ class ChangeEmailCode(models.Model):
     time_expired = models.DateTimeField(
         _('Time expired'),
         default=default_time_expired,
+        db_index=True
+    )
+    created = models.DateTimeField(
+        _('Creation time'),
+        auto_now_add=True,
         db_index=True
     )
 

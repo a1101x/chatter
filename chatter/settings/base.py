@@ -199,12 +199,16 @@ REST_AUTH_SERIALIZERS = {
     'USER_DETAILS_SERIALIZER': 'apps.user.serializers.JWTUserSerializer',
 }
 
+CHANNEL_REDIS_HOST = env.str('CHANNEL_REDIS_HOST', default='localhost')
+CHANNEL_REDIS_PORT = env.int('CHANNEL_REDIS_PORT', default=6379)
 ASGI_APPLICATION = 'chatter.routing.application'
 CHANNEL_LAYERS = {
     'default': {
         'BACKEND': 'channels_redis.core.RedisChannelLayer',
         'CONFIG': {
-            'hosts': [('localhost', 6379)],
+            'hosts': [(CHANNEL_REDIS_HOST, CHANNEL_REDIS_PORT)],
         },
     },
 }
+
+ACTIVATION_CODE_LIFETIME = env.int('ACTIVATION_CODE_LIFETIME', default=30)

@@ -15,7 +15,7 @@ class Phone(models.Model):
     phone_number = models.CharField(
         _('Phone number'),
         max_length=16,
-        validators=[RegexValidator(r'^\d{9,15}$')],
+        validators=[RegexValidator(r'^\+\d{9,15}$')],
         db_index=True,
         help_text=_('Phone number.')
     )
