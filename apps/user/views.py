@@ -3,7 +3,7 @@ from rest_framework import generics, status
 from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
 
-from apps.user.serializers import UserRegistrationSerializer, SendActivationCodeSerializer
+from apps.user.serializers import SendActivationCodeSerializer, UserActivationSerializer, UserRegistrationSerializer
 
 
 class UserRegistrationViewSet(generics.CreateAPIView):
@@ -23,16 +23,24 @@ class SendActivationCodeView(generics.CreateAPIView):
     serializer_class = SendActivationCodeSerializer
     permission_classes = (AllowAny,)
 
-    def create(self, request, *args, **kwargs):
+
+class UserActivationView(generics.GenericAPIView):
+    """
+    post:
+        Activate user with activation code.
+    """
+    serializer_class = UserActivationSerializer
+    permission_classes = (AllowAny,)
+
+    def post(self, request, *args, **kwargs):
         """
-        Send user email with activation code,
-        if user with this email exists.
+        Check serializer and activate user if serializer is valid.
         """
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         return Response(
             {
-                'detail': _('Please check your email to activate your account.')
+                'detail': _('Congratulations! Your account has been activated.')
             },
             status=status.HTTP_200_OK
         )

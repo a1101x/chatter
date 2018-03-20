@@ -108,14 +108,13 @@ class ActivationCodeSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = UserActivationCode
-        fields = ('email',)
 
     def validate_email(self, value):
         """
         Checks whether the user exists and is user inactive.
         """
         try:
-            self.user = User.objects.get(email__iexact=value)
+            self.user = User.objects.only('email', 'is_active').get(email__iexact=value)
 
             if self.user.is_active:
                 raise serializers.ValidationError(
@@ -125,7 +124,7 @@ class ActivationCodeSerializer(serializers.ModelSerializer):
         except User.DoesNotExist:
             raise serializers.ValidationError(
                 _('User with this email does not exist.'),
-                code=status.HTTP_400_BAD_REQUEST
+                code=status.HTTP_404_NOT_FOUND
             )
 
         return value
@@ -133,11 +132,19 @@ class ActivationCodeSerializer(serializers.ModelSerializer):
 
 class SendActivationCodeSerializer(ActivationCodeSerializer):
     """
-    Send user activation code.
+    Send activation code to a user.
     """
+    class Meta(ActivationCodeSerializer.Meta):
+        model = UserActivationCode
+        fields = ('email', 'user', 'time_expired')
+        extra_kwargs = {
+            'user': {'read_only': True},
+            'time_expired': {'read_only': True}
+        }
+
     def create(self, validated_data):
         """
-        Creates a model in db after email validation.
+        Creates an activation code model in db after email validation.
         """
         pin_code = generate_pin_code()
         send_templated_email.delay(
@@ -151,3 +158,48 @@ class SendActivationCodeSerializer(ActivationCodeSerializer):
         )
         user_activation_code.save()
         return user_activation_code
+
+
+class UserActivationSerializer(ActivationCodeSerializer):
+    """
+    User activation using cactivation code.
+    """
+    class Meta(ActivationCodeSerializer.Meta):
+        fields = ('email', 'user', 'code')
+        extra_kwargs = {
+            'user': {'read_only': True}
+        }
+
+    def validate_code(self, value):
+        """
+        Pin code validation.
+        """
+        try:
+            code = UserActivationCode.objects.filter(user=self.user).latest('created')
+
+            if code.time_expired < timezone.now():
+                raise serializers.ValidationError(
+                    _('The activation code is already expired.'),
+                    code=status.HTTP_400_BAD_REQUEST
+                )
+
+            if code.code != value:
+                raise serializers.ValidationError(
+                    _('The activation code is not valid for this user.'),
+                    code=status.HTTP_400_BAD_REQUEST
+                )
+        except UserActivationCode.DoesNotExist:
+            raise serializers.ValidationError(
+                _('There are no any activation codes for this user.'),
+                code=status.HTTP_404_NOT_FOUND
+            )
+        
+        return value
+
+    def validate(self, data):
+        """
+        Make user active.
+        """
+        self.user.is_active = True
+        self.user.save()
+        return data
