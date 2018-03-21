@@ -114,7 +114,6 @@ REST_FRAMEWORK = {
         'rest_framework.permissions.IsAuthenticated',
     ),
     'DEFAULT_RENDERER_CLASSES': (
-        # 'rest_framework.renderers.JSONRenderer',
         'apps.utils.renderer.ChatterRenderer',
         'rest_framework.renderers.BrowsableAPIRenderer',
     ),
@@ -199,6 +198,7 @@ EMAIL_TEMPLATE_DEFAULTS = {
 
 REST_AUTH_SERIALIZERS = {
     'USER_DETAILS_SERIALIZER': 'apps.user.serializers.JWTUserSerializer',
+    'LOGIN_SERIALIZER': 'apps.user.serializers.LoginSerializer'
 }
 
 CHANNEL_REDIS_HOST = env.str('CHANNEL_REDIS_HOST', default='localhost')
