@@ -67,12 +67,12 @@ class UserActivationCodeAdmin(admin.ModelAdmin):
     fieldsets = (
         (_('User'), {'fields': ('user',)}),
         (_('Code'), {'fields': ('code',)}),
-        (_('Expiration time'), {'fields': ('time_expired',)})
+        (_('Times'), {'fields': ('time_expired', 'created')})
     )
     raw_id_fields = ('user',)
-    list_display = ('user', 'code', 'time_expired')
+    list_display = ('user', 'code', 'time_expired', 'created')
     search_fields = ('user__email', 'user__username')
-    readonly_fields = ('user', )
+    readonly_fields = ('user', 'code', 'time_expired', 'created')
     list_filter = ('user__is_active',)
     ordering = ('user__email',)
 
@@ -83,11 +83,11 @@ class ChangeEmailCodeAdmin(admin.ModelAdmin):
         (_('User'), {'fields': ('user',)}),
         (_('Code'), {'fields': ('code',)}),
         (_('New email'), {'fields': ('new_email',)}),
-        (_('Expiration time'), {'fields': ('time_expired',)})
+        (_('Times'), {'fields': ('time_expired', 'created')})
     )
     raw_id_fields = ('user',)
-    list_display = ('user', 'new_email', 'code', 'time_expired')
+    list_display = ('user', 'new_email', 'code', 'time_expired', 'created')
     search_fields = ('user__email', 'user__username', 'new_email')
     list_filter = ('user__is_active',)
-    readonly_fields = ('user', 'new_email', 'time_expired')
+    readonly_fields = ('user', 'new_email', 'code', 'time_expired', 'created')
     ordering = ('user__email',)

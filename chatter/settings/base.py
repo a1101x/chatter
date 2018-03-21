@@ -114,7 +114,7 @@ REST_FRAMEWORK = {
         'rest_framework.permissions.IsAuthenticated',
     ),
     'DEFAULT_RENDERER_CLASSES': (
-        'rest_framework.renderers.JSONRenderer',
+        'apps.utils.renderer.ChatterRenderer',
         'rest_framework.renderers.BrowsableAPIRenderer',
     ),
     'DEFAULT_AUTHENTICATION_CLASSES': (
@@ -129,6 +129,7 @@ REST_FRAMEWORK = {
     'DEFAULT_PAGINATION_CLASS': 'rest_framework.pagination.PageNumberPagination',
     'PAGE_SIZE': 25,
     'DEFAULT_FILTER_BACKENDS': ('django_filters.rest_framework.DjangoFilterBackend',),
+    'EXCEPTION_HANDLER': 'apps.utils.exception_handler.chatter_exception_handler',
 }
 
 JWT_AUTH = {
@@ -197,14 +198,19 @@ EMAIL_TEMPLATE_DEFAULTS = {
 
 REST_AUTH_SERIALIZERS = {
     'USER_DETAILS_SERIALIZER': 'apps.user.serializers.JWTUserSerializer',
+    'LOGIN_SERIALIZER': 'apps.user.serializers.LoginSerializer'
 }
 
+CHANNEL_REDIS_HOST = env.str('CHANNEL_REDIS_HOST', default='localhost')
+CHANNEL_REDIS_PORT = env.int('CHANNEL_REDIS_PORT', default=6379)
 ASGI_APPLICATION = 'chatter.routing.application'
 CHANNEL_LAYERS = {
     'default': {
         'BACKEND': 'channels_redis.core.RedisChannelLayer',
         'CONFIG': {
-            'hosts': [('localhost', 6379)],
+            'hosts': [(CHANNEL_REDIS_HOST, CHANNEL_REDIS_PORT)],
         },
     },
 }
+
+ACTIVATION_CODE_LIFETIME = env.int('ACTIVATION_CODE_LIFETIME', default=30)

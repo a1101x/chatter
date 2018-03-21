@@ -1,4 +1,5 @@
-from django.contrib.auth import get_user_model
+from django.conf import settings
+from django.contrib.auth import authenticate, get_user_model
 from django.core.validators import RegexValidator
 from django.utils import timezone
 from django.utils.translation import ugettext as _
@@ -8,6 +9,7 @@ from rest_framework.validators import UniqueValidator
 from apps.mailer.choices import EMAIL_TYPES
 from apps.mailer.tasks import send_templated_email
 from apps.phone.models import Phone
+from apps.user.models import UserActivationCode
 from apps.user.utils import generate_pin_code
 
 User = get_user_model()
@@ -28,7 +30,7 @@ class UserRegistrationSerializer(serializers.ModelSerializer):
     """
     # Phone
     phone_number = serializers.RegexField(
-        regex=r'^\d{9,15}$', required=False,
+        regex=r'^\+\d{9,15}$', required=False,
         validators=[
             UniqueValidator(
                 queryset=Phone.objects.all(),
@@ -36,8 +38,9 @@ class UserRegistrationSerializer(serializers.ModelSerializer):
             )
         ],
         error_messages={
-            'invalid': _('Phone number must contain only numbers.')
-        }
+            'invalid': _('Phone number must starts with + and contain only numbers.')
+        },
+        write_only=True
     )
 
     class Meta:
@@ -86,10 +89,226 @@ class UserRegistrationSerializer(serializers.ModelSerializer):
 
         if phone is not None:
             Phone.objects.create(user=user, phone_number=phone)
-
+        
+        pin_code = generate_pin_code()
+        code = UserActivationCode(user=user, code=pin_code)
+        code.save()
         send_templated_email.delay(
             key=EMAIL_TYPES.USER_ACTIVATION,
             recipient_list=validated_data.get('email'),
-            context={'code': generate_pin_code()}
+            context={'code': pin_code}
         )
         return user
+
+
+class ActivationCodeSerializer(serializers.ModelSerializer):
+    """
+    Base serializer for user activation.
+    """
+    email = serializers.EmailField(write_only=True)
+
+    class Meta:
+        model = UserActivationCode
+
+    def validate_email(self, value):
+        """
+        Checks whether the user exists and is user inactive.
+        """
+        try:
+            self.user = User.objects.only('email', 'is_active').get(email__iexact=value)
+
+            if self.user.is_active:
+                raise serializers.ValidationError(
+                    _('User account is already activated.'),
+                    code=status.HTTP_400_BAD_REQUEST
+                )
+        except User.DoesNotExist:
+            raise serializers.ValidationError(
+                _('User with this email does not exist.'),
+                code=status.HTTP_404_NOT_FOUND
+            )
+
+        return value
+
+
+class SendActivationCodeSerializer(ActivationCodeSerializer):
+    """
+    Send activation code to a user.
+    """
+    class Meta(ActivationCodeSerializer.Meta):
+        model = UserActivationCode
+        fields = ('email', 'user', 'time_expired')
+        extra_kwargs = {
+            'user': {'read_only': True},
+            'time_expired': {'read_only': True}
+        }
+
+    def create(self, validated_data):
+        """
+        Creates an activation code model in db after email validation.
+        """
+        pin_code = generate_pin_code()
+        send_templated_email.delay(
+            key=EMAIL_TYPES.USER_ACTIVATION,
+            recipient_list=validated_data.get('email'),
+            context={'code': pin_code}
+        )
+        user_activation_code = UserActivationCode(
+            user=self.user,
+            code=pin_code
+        )
+        user_activation_code.save()
+        return user_activation_code
+
+
+class UserActivationSerializer(ActivationCodeSerializer):
+    """
+    User activation using cactivation code.
+    """
+    class Meta(ActivationCodeSerializer.Meta):
+        fields = ('email', 'user', 'code')
+        extra_kwargs = {
+            'user': {'read_only': True}
+        }
+
+    def validate_code(self, value):
+        """
+        Pin code validation.
+        """
+        try:
+            code = UserActivationCode.objects.filter(user=self.user).latest('created')
+
+            if code.time_expired < timezone.now():
+                raise serializers.ValidationError(
+                    _('The activation code is already expired.'),
+                    code=status.HTTP_400_BAD_REQUEST
+                )
+
+            if code.code != value:
+                raise serializers.ValidationError(
+                    _('The activation code is not valid for this user.'),
+                    code=status.HTTP_400_BAD_REQUEST
+                )
+        except UserActivationCode.DoesNotExist:
+            raise serializers.ValidationError(
+                _('There are no any activation codes for this user.'),
+                code=status.HTTP_404_NOT_FOUND
+            )
+        
+        return value
+
+    def validate(self, data):
+        """
+        Make user active.
+        """
+        self.user.is_active = True
+        self.user.save()
+        return data
+
+
+class LoginSerializer(serializers.Serializer):
+    """
+    Serializer for user login.
+    """
+    username = serializers.CharField(required=False, allow_blank=True)
+    email = serializers.EmailField(required=False, allow_blank=True)
+    password = serializers.CharField(style={'input_type': 'password'})
+
+    def _validate_password(self, user, password):
+        """
+        Check user password.
+        """
+        if not user.check_password(password):
+            raise serializers.ValidationError(
+                {
+                    'password': _('This is not a valid password for this user.')
+                },
+                code=status.HTTP_400_BAD_REQUEST
+            )
+
+    def _validate_username_email(self, username, email, password):
+        """
+        Check if user exist and try to authenticate with provided credentials..
+        Returns user or None.
+        """
+        user = None
+
+        if email and password:
+            try:
+                user = User.objects.get(email__iexact=email)
+            except User.DoesNotExist:
+                raise serializers.ValidationError(
+                    {
+                        'email': _('User with this email does not exist.')
+                    },
+                    code=status.HTTP_404_NOT_FOUND
+                )
+
+            self._validate_password(user, password)
+            user = authenticate(email=email, password=password)
+        elif username and password:
+            try:
+                user = User.objects.get(username__iexact=username)
+            except User.DoesNotExist:
+                raise serializers.ValidationError(
+                    {
+                        'username': _('User with this username does not exist.')
+                    },
+                    code=status.HTTP_404_NOT_FOUND
+                )
+
+            self._validate_password(user, password)
+            user = authenticate(username=username, password=password)
+        else:
+            raise serializers.ValidationError(
+                {
+                    'username': _('Must include either "username" or "email".'),
+                    'email': _('Must include either "username" or "email".'),
+                    'password': _('This field is required.')
+                },
+                code=status.HTTP_400_BAD_REQUEST
+            )
+
+        return user
+
+    def validate(self, data):
+        """
+        Check if the user is activated.
+        """
+        username = data.get('username', None)
+        email = data.get('email', None)
+        password = data.get('password', None)
+        user = self._validate_username_email(username, email, password)
+
+        if user:
+            if not user.is_active:
+                raise serializers.ValidationError(
+                    {
+                        'user': _('This account is currently inactive.')
+                    },
+                    code=status.HTTP_400_BAD_REQUEST
+                )
+        else:
+            raise serializers.ValidationError(
+                {
+                    'user': _('Unable to log in with provided credentials.')
+                },
+                code=status.HTTP_400_BAD_REQUEST
+            )
+
+        if 'rest_auth.registration' in settings.INSTALLED_APPS:
+            from allauth.account import app_settings
+
+            if app_settings.EMAIL_VERIFICATION == app_settings.EmailVerificationMethod.MANDATORY:
+                email_address = user.emailaddress_set.get(email=user.email)
+
+                if not email_address.verified:
+                    raise serializers.ValidationError(
+                        {
+                            'email': _('E-mail is not verified.')
+                        },
+                        code=status.HTTP_400_BAD_REQUEST
+                    )
+
+        data['user'] = user
+        return data
