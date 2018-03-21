@@ -30,12 +30,14 @@ INSTALLED_APPS = [
     'allauth.account',
     'corsheaders',
     'mapwidgets',
+    'phonenumber_field',
 
     # our apps
     'apps.user',
     'apps.phone',
     'apps.location',
-    'apps.mailer'
+    'apps.mailer',
+    'apps.messenger'
 ]
 
 SITE_ID = 1
@@ -214,3 +216,7 @@ CHANNEL_LAYERS = {
 }
 
 ACTIVATION_CODE_LIFETIME = env.int('ACTIVATION_CODE_LIFETIME', default=30)
+
+TWILIO_ACCOUNT_SID = env.str('TWILIO_ACCOUNT_SID', default='')
+TWILIO_AUTH_TOKEN = env.str('TWILIO_AUTH_TOKEN', default='')
+TWILIO_NUMBER = env.str('TWILIO_NUMBER', default='')

@@ -3,14 +3,16 @@ from django.contrib.auth import authenticate, get_user_model
 from django.core.validators import RegexValidator
 from django.utils import timezone
 from django.utils.translation import ugettext as _
+from phonenumber_field.serializerfields import PhoneNumberField
 from rest_framework import serializers, status
 from rest_framework.validators import UniqueValidator
 
 from apps.mailer.choices import EMAIL_TYPES
 from apps.mailer.tasks import send_templated_email
-from apps.phone.models import Phone
+from apps.messenger.choices import SMS_TYPES
+from apps.messenger.tasks import send_templated_sms
+from apps.phone.models import Phone, PhoneVerificationCode
 from apps.user.models import UserActivationCode
-from apps.user.utils import generate_pin_code
 
 User = get_user_model()
 
@@ -88,16 +90,8 @@ class UserRegistrationSerializer(serializers.ModelSerializer):
         user.save()
 
         if phone is not None:
-            Phone.objects.create(user=user, phone_number=phone)
+            phone = Phone.objects.create(user=user, phone_number=phone)
         
-        pin_code = generate_pin_code()
-        code = UserActivationCode(user=user, code=pin_code)
-        code.save()
-        send_templated_email.delay(
-            key=EMAIL_TYPES.USER_ACTIVATION,
-            recipient_list=validated_data.get('email'),
-            context={'code': pin_code}
-        )
         return user
 
 
@@ -147,18 +141,13 @@ class SendActivationCodeSerializer(ActivationCodeSerializer):
         """
         Creates an activation code model in db after email validation.
         """
-        pin_code = generate_pin_code()
+        code = UserActivationCode.objects.create(user=self.user)
         send_templated_email.delay(
             key=EMAIL_TYPES.USER_ACTIVATION,
             recipient_list=validated_data.get('email'),
-            context={'code': pin_code}
+            context={'code': code.code}
         )
-        user_activation_code = UserActivationCode(
-            user=self.user,
-            code=pin_code
-        )
-        user_activation_code.save()
-        return user_activation_code
+        return code
 
 
 class UserActivationSerializer(ActivationCodeSerializer):
@@ -228,7 +217,7 @@ class LoginSerializer(serializers.Serializer):
 
     def _validate_username_email(self, username, email, password):
         """
-        Check if user exist and try to authenticate with provided credentials..
+        Check if user exist and try to authenticate with provided credentials.
         Returns user or None.
         """
         user = None
@@ -311,4 +300,50 @@ class LoginSerializer(serializers.Serializer):
                     )
 
         data['user'] = user
+        return data
+
+
+class ForgotUsernameEmailSerializer(serializers.Serializer):
+    """
+    Sends username and email on user phone number.
+    """
+    phone_number = PhoneNumberField(
+        error_messages={
+            'invalid': _('Phone number must starts with + and contain only numbers.')
+        }
+    )
+
+    class Meta:
+        fields = '__all__'
+
+    def validate_phone_number(self, value):
+        """
+        Check if the phone number is in the db.
+        """
+        try:
+            self.phone = Phone.objects.select_related('user').only(
+                'user__username', 'user__email', 'phone_number', 'is_verified'
+            ).get(phone_number=value)
+
+            if not self.phone.is_verified:
+                raise serializers.ValidationError(
+                    _('Phone number does not verified.'),
+                    code=status.HTTP_400_BAD_REQUEST
+                )
+        except Phone.DoesNotExist:
+            raise serializers.ValidationError(
+                _('Phone number does not exist.'),
+                code=status.HTTP_404_NOT_FOUND
+            )
+        
+        return value
+
+    def validate(self, data):
+        """
+        Send sms with username and email.
+        """
+        body = (self.phone.user.username, self.phone.user.email)
+        send_templated_sms.delay(
+            SMS_TYPES.FORGOT_USERNAME_EMAIL, str(self.phone.phone_number), body
+        )
         return data

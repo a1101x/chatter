@@ -12,7 +12,10 @@ def chatter_exception_handler(exc, context):
         errors = {}
 
         for field, value in response.data.items():
-            errors[field] = ' '.join(value)
+            if isinstance(value, list):
+                errors[field] = ' '.join(value)
+            else:
+                errors[field] = value
 
         response.data = {}
         response.data['errors'] = errors
