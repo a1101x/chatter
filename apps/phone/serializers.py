@@ -1,9 +1,12 @@
+from django.utils import timezone
 from django.utils.translation import ugettext as _
 from phonenumber_field.serializerfields import PhoneNumberField
 from rest_framework import serializers, status
 from rest_framework.validators import UniqueValidator
 
-from apps.phone.models import Phone
+from apps.messenger.choices import SMS_TYPES
+from apps.messenger.tasks import send_templated_sms
+from apps.phone.models import Phone, PhoneVerificationCode
 
 
 class PhoneListSerializer(serializers.ModelSerializer):
@@ -55,42 +58,114 @@ class PhoneDetailSerializer(serializers.ModelSerializer):
         fields = ('phone_number',)
 
 
-class PhoneVerificationSerializer(serializers.Serializer):
+class PhoneVerificationCodeSerializer(serializers.ModelSerializer):
     """
-    Serializer for phone verification.
+    Base serializer for phone verification.
     """
     phone_number = PhoneNumberField(
+        write_only=True,
         error_messages={
             'invalid': _('Phone number must starts with + and contain only numbers.')
         }
     )
-    user = serializers.CharField(default=serializers.CurrentUserDefault())
-    code = serializers.CharField(style={'input_type': 'password'})
 
     class Meta:
-        fields = '__all__'
+        model = PhoneVerificationCode
 
     def validate_phone_number(self, value):
         """
-        Check if phone exists and belongs to the current user.
-        Returns user or None.
+        Check if phone exists and not verified.
         """
-        phone = None
-
         try:
-            phone = Phone.objects.get(phone_number=value)
+            self.phone = Phone.objects.only(
+                'user__id', 'phone_number', 'is_verified'
+            ).select_related('user').get(phone_number=value)
+
+            if self.phone.is_verified:
+                raise serializers.ValidationError(
+                _('This phone number is already verified.'),
+                code=status.HTTP_400_BAD_REQUEST
+            )
         except Phone.DoesNotExist:
             raise serializers.ValidationError(
-                {
-                    'phone': _('This phone number is not in the database.')
-                },
+                _('This phone number is not in the database.'),
                 code=status.HTTP_404_NOT_FOUND
             )
 
         return value
 
-    def validation(self, data):
+
+class SendVerificationCodeSerializer(PhoneVerificationCodeSerializer):
+    """
+    Send verification code on the phone number.
+    """
+    class Meta(PhoneVerificationCodeSerializer.Meta):
+        fields = ('phone_number',)
+
+    def create(self, validated_data):
         """
-        Verify phone number if it is user 
+        Creates an verification code model in db after phone number validation.
         """
+        code = PhoneVerificationCode.objects.create(phone=self.phone)
+        send_templated_sms.delay(
+            key=SMS_TYPES.PHONE_NUMBER_VERIFICATION,
+            recipient=str(validated_data.get('phone_number')),
+            body=(code.code,)
+        )
+        return code
+
+
+class PhoneVerifySerializer(PhoneVerificationCodeSerializer):
+    """
+    Serializer for phone verification.
+    """
+    user = serializers.CharField(read_only=True, default=serializers.CurrentUserDefault())
+
+    class Meta(PhoneVerificationCodeSerializer.Meta):
+        fields = ('phone_number', 'user', 'code')
+        extra_kwargs = {
+            'code': {'required': True},
+            'phone_number': {'required': True}
+        }
+
+    def validate_code(self, value):
+        """
+        Pin code validation.
+        """
+        try:
+            code = PhoneVerificationCode.objects.filter(phone=self.phone).latest('created')
+
+            if code.code == value:
+                if code.time_expired < timezone.now():
+                    raise serializers.ValidationError(
+                        _('The verification code is already expired.'),
+                        code=status.HTTP_400_BAD_REQUEST
+                    )
+            else:
+                raise serializers.ValidationError(
+                    _('The verification code is not valid for this phone number.'),
+                    code=status.HTTP_400_BAD_REQUEST
+                )
+        except PhoneVerificationCode.DoesNotExist:
+            raise serializers.ValidationError(
+                _('There are no any verification codes for this phone number.'),
+                code=status.HTTP_404_NOT_FOUND
+            )
+        
+        return value
+
+    def validate(self, data):
+        """
+        Verify phone number.
+        """
+        if self.phone.user != data.get('user'):
+            raise serializers.ValidationError(
+                {
+                    'phone_number': _('Only phone number owner can verify phone.')
+                },
+                code=status.HTTP_400_BAD_REQUEST
+            )
+        
+        self.phone.is_verified = True
+        self.phone.save()
         return data

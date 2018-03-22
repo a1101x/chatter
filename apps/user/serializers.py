@@ -167,13 +167,13 @@ class UserActivationSerializer(ActivationCodeSerializer):
         try:
             code = UserActivationCode.objects.filter(user=self.user).latest('created')
 
-            if code.time_expired < timezone.now():
-                raise serializers.ValidationError(
-                    _('The activation code is already expired.'),
-                    code=status.HTTP_400_BAD_REQUEST
-                )
-
-            if code.code != value:
+            if code.code == value:
+                if code.time_expired < timezone.now():
+                    raise serializers.ValidationError(
+                        _('The activation code is already expired.'),
+                        code=status.HTTP_400_BAD_REQUEST
+                    )
+            else:
                 raise serializers.ValidationError(
                     _('The activation code is not valid for this user.'),
                     code=status.HTTP_400_BAD_REQUEST
