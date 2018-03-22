@@ -1,10 +1,14 @@
 from django.conf import settings
 from django.contrib.auth.models import AbstractUser, BaseUserManager
 from django.db import models
+from django.db.models.signals import post_save
+from django.dispatch import receiver
 from django.utils.translation import ugettext as _
 
+from apps.mailer.choices import EMAIL_TYPES
+from apps.mailer.tasks import send_templated_email
 from apps.user.choices import GENDER_TYPES
-from apps.user.utils import default_time_expired
+from apps.user.utils import default_time_expired, generate_pin_code
 from apps.user.validators import username_validator, validate_profile_pic
 
 
@@ -120,6 +124,7 @@ class UserActivationCode(models.Model):
     )
     code = models.CharField(
         _('Code'),
+        default=generate_pin_code,
         max_length=4,
         db_index=True
     )
@@ -134,6 +139,10 @@ class UserActivationCode(models.Model):
         db_index=True
     )
 
+    class Meta:
+        verbose_name = _('User activation code')
+        verbose_name_plural = _('User activation codes')
+
     def __str__(self):
         return '{} - {}'.format(self.user, self.code)
 
@@ -147,6 +156,7 @@ class ChangeEmailCode(models.Model):
     )
     code = models.CharField(
         _('Code'),
+        default=generate_pin_code,
         max_length=4,
         db_index=True
     )
@@ -168,5 +178,19 @@ class ChangeEmailCode(models.Model):
         db_index=True
     )
 
+    class Meta:
+        verbose_name = _('Change email code')
+        verbose_name_plural = _('Change email codes')
+
     def __str__(self):
         return '{} - {}'.format(self.user, self.code)
+
+
+@receiver(post_save, sender=User)
+def create_activation_code(sender, instance, **kwargs):
+    code = UserActivationCode.objects.create(user=instance)
+    send_templated_email.delay(
+        key=EMAIL_TYPES.USER_ACTIVATION,
+        recipient_list=instance.email,
+        context={'code': code.code}
+    )

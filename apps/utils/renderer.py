@@ -7,6 +7,9 @@ class ChatterRenderer(JSONRenderer):
     """
     def render(self, data, accepted_media_type=None, renderer_context=None):
         status = False
+        
+        if data is None:
+            data = {}
 
         if renderer_context is not None:
             response = renderer_context['response']

@@ -8,6 +8,7 @@ api_urlpatterns = [
     path('user/', include('apps.user.urls')),
     path('user/', include('rest_auth.urls')),
     path('location/', include('apps.location.urls')),
+    path('phone/', include('apps.phone.urls')),
 ]
 
 urlpatterns = [

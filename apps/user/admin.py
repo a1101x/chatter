@@ -69,7 +69,6 @@ class UserActivationCodeAdmin(admin.ModelAdmin):
         (_('Code'), {'fields': ('code',)}),
         (_('Times'), {'fields': ('time_expired', 'created')})
     )
-    raw_id_fields = ('user',)
     list_display = ('user', 'code', 'time_expired', 'created')
     search_fields = ('user__email', 'user__username')
     readonly_fields = ('user', 'code', 'time_expired', 'created')
@@ -85,7 +84,6 @@ class ChangeEmailCodeAdmin(admin.ModelAdmin):
         (_('New email'), {'fields': ('new_email',)}),
         (_('Times'), {'fields': ('time_expired', 'created')})
     )
-    raw_id_fields = ('user',)
     list_display = ('user', 'new_email', 'code', 'time_expired', 'created')
     search_fields = ('user__email', 'user__username', 'new_email')
     list_filter = ('user__is_active',)

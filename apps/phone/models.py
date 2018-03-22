@@ -1,7 +1,11 @@
 from django.conf import settings
-from django.core.validators import RegexValidator
 from django.db import models
+from django.db.models.signals import post_save
+from django.dispatch import receiver
 from django.utils.translation import ugettext as _
+from phonenumber_field.modelfields import PhoneNumberField
+
+from apps.user.utils import default_time_expired, generate_pin_code
 
 
 class Phone(models.Model):
@@ -12,11 +16,10 @@ class Phone(models.Model):
         on_delete=models.CASCADE,
         help_text=_('A user who owns a phone number.')
     )
-    phone_number = models.CharField(
+    phone_number = PhoneNumberField(
         _('Phone number'),
-        max_length=16,
-        validators=[RegexValidator(r'^\+\d{9,15}$')],
         db_index=True,
+        unique=True,
         help_text=_('Phone number.')
     )
     is_verified = models.BooleanField(
@@ -31,3 +34,40 @@ class Phone(models.Model):
 
     def __str__(self):
         return '{} - {}'.format(self.user, self.phone_number)
+
+
+class PhoneVerificationCode(models.Model):
+    phone = models.ForeignKey(
+        Phone,
+        verbose_name=_('Phone'),
+        on_delete=models.CASCADE,
+        related_name='phone_verification'
+    )
+    code = models.CharField(
+        _('Code'),
+        max_length=4,
+        default=generate_pin_code,
+        db_index=True
+    )
+    time_expired = models.DateTimeField(
+        _('Time expired'),
+        default=default_time_expired,
+        db_index=True
+    )
+    created = models.DateTimeField(
+        _('Creation time'),
+        auto_now_add=True,
+        db_index=True
+    )
+
+    class Meta:
+        verbose_name = _('Phone verification code')
+        verbose_name_plural = _('Phone verification codes')
+
+    def __str__(self):
+        return '{} - {}'.format(self.phone, self.code)
+
+
+@receiver(post_save, sender=Phone)
+def create_verification_code(sender, instance, **kwargs):
+    PhoneVerificationCode.objects.create(phone=instance)
