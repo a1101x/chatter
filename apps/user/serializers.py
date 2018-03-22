@@ -347,3 +347,13 @@ class ForgotUsernameEmailSerializer(serializers.Serializer):
             SMS_TYPES.FORGOT_USERNAME_EMAIL, str(self.phone.phone_number), body
         )
         return data
+
+
+class UserSerializer(serializers.ModelSerializer):
+    """
+    Serializer for user model.
+    """
+    class Meta:
+        model = User
+        exclude = ('password', 'is_staff', 'is_superuser', 'groups', 'user_permissions')
+        read_only_fields = ('is_active',)

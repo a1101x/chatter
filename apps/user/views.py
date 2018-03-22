@@ -1,11 +1,18 @@
+from django.contrib.auth import get_user_model
 from django.utils.translation import ugettext as _
+from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework import generics, status
+from rest_framework.filters import OrderingFilter, SearchFilter
 from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
 
+from apps.user.permissions import IsAccountOwnerOrReadOnly
 from apps.user.serializers import (
-    ForgotUsernameEmailSerializer, SendActivationCodeSerializer, UserActivationSerializer, UserRegistrationSerializer
+    ForgotUsernameEmailSerializer, SendActivationCodeSerializer, UserActivationSerializer, UserRegistrationSerializer,
+    UserSerializer
 )
+
+User = get_user_model()
 
 
 class UserRegistrationViewSet(generics.CreateAPIView):
@@ -79,3 +86,43 @@ class ForgotUsernameEmailView(generics.GenericAPIView):
             },
             status=status.HTTP_200_OK
         )
+
+
+class UserListView(generics.ListAPIView):
+    """
+    get:
+        Get list of users.
+    """
+    serializer_class = UserSerializer
+    queryset = User.objects.all()
+    filter_backends = (DjangoFilterBackend, OrderingFilter, SearchFilter)
+    filter_fields = (
+        'id', 'username', 'email', 'first_name', 'last_name', 'birthday', 'is_active', 'gender', 'date_joined',
+        'last_login'
+    )
+    ordering_fields = (
+        'id', 'username', 'email', 'first_name', 'last_name', 'birthday', 'is_active', 'gender', 'date_joined',
+        'last_login'
+    )
+    search_fields = ('username', 'email', 'first_name', 'last_name', 'birthday', 'gender')
+    ordering = ('id',)
+
+
+class UserDetailView(generics.RetrieveUpdateAPIView):
+    """
+    get:
+        Get user detail.
+
+    put:
+        Update user.
+        Availiable only for account owners.
+
+    patch:
+        Update user.
+        Availiable only for phone owners.
+    """
+    serializer_class = UserSerializer
+    permission_classes = (IsAccountOwnerOrReadOnly,)
+    queryset = User.objects.all()
+
+
