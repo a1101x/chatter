@@ -1,7 +1,6 @@
 import html2text
 from django.conf import settings
 from django.core.exceptions import ImproperlyConfigured
-from django.contrib.postgres.fields import JSONField
 from django.db import models
 from django.template import Context, Template, loader
 from django.utils.translation import ugettext as _

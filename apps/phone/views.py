@@ -6,7 +6,9 @@ from rest_framework.response import Response
 
 from apps.phone.models import Phone
 from apps.phone.permissions import IsPhoneNumberOwnerOrReadOnly
-from apps.phone.serializers import PhoneDetailSerializer, PhoneListSerializer, PhoneVerificationSerializer
+from apps.phone.serializers import (
+    PhoneDetailSerializer, PhoneListSerializer, PhoneVerifySerializer, SendVerificationCodeSerializer
+)
 
 
 class PhoneListView(generics.ListCreateAPIView):
@@ -54,21 +56,37 @@ class PhoneDetailView(generics.RetrieveUpdateDestroyAPIView):
         return PhoneDetailSerializer
 
 
+class SendPhoneVerificationCodeView(generics.CreateAPIView):
+    """
+    post:
+        Send user sms with verification code.
+    """
+    serializer_class = SendVerificationCodeSerializer
+
+
 class PhoneVerificationView(generics.GenericAPIView):
     """
     post:
         Verify user phone number.
+        Availiable only for phone owners.
     """
-    serializer_class = PhoneVerificationSerializer
+    serializer_class = PhoneVerifySerializer
     queryset = Phone.objects.all()
 
     def post(self, request, *args, **kwargs):
         """
-        Verify user phone number.
+        Check serializer and activate user if serializer is valid.
+
+        post params:
+            phone_number, code
+        return:
+            success status, status code, additional data
         """
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         return Response(
-            serializer.data,
+            {
+                'detail': _('Congratulations! Your phone number has been verified.')
+            },
             status=status.HTTP_200_OK
         )

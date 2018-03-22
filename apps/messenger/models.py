@@ -1,6 +1,5 @@
 from django.db import models
 from django.utils.translation import ugettext as _
-from phonenumber_field.modelfields import PhoneNumberField
 
 from apps.messenger.choices import SMS_TYPES
 

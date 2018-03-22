@@ -187,10 +187,11 @@ class ChangeEmailCode(models.Model):
 
 
 @receiver(post_save, sender=User)
-def create_activation_code(sender, instance, **kwargs):
-    code = UserActivationCode.objects.create(user=instance)
-    send_templated_email.delay(
-        key=EMAIL_TYPES.USER_ACTIVATION,
-        recipient_list=instance.email,
-        context={'code': code.code}
-    )
+def create_activation_code(sender, instance, created, **kwargs):
+    if created:
+        code = UserActivationCode.objects.create(user=instance)
+        send_templated_email.delay(
+            key=EMAIL_TYPES.USER_ACTIVATION,
+            recipient_list=instance.email,
+            context={'code': code.code}
+        )

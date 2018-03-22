@@ -5,6 +5,8 @@ from django.dispatch import receiver
 from django.utils.translation import ugettext as _
 from phonenumber_field.modelfields import PhoneNumberField
 
+from apps.messenger.choices import SMS_TYPES
+from apps.messenger.tasks import send_templated_sms
 from apps.user.utils import default_time_expired, generate_pin_code
 
 
@@ -69,5 +71,9 @@ class PhoneVerificationCode(models.Model):
 
 
 @receiver(post_save, sender=Phone)
-def create_verification_code(sender, instance, **kwargs):
-    PhoneVerificationCode.objects.create(phone=instance)
+def create_verification_code(sender, instance, created, **kwargs):
+    if created:
+        code = PhoneVerificationCode.objects.create(phone=instance)
+        send_templated_sms.delay(
+            SMS_TYPES.PHONE_NUMBER_VERIFICATION, str(instance.phone_number), code.code
+        )

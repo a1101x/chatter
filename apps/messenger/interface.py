@@ -23,8 +23,6 @@ class TwilioInterface(object):
         Primary send sms method.
         """
         response = self.client.messages.create(
-            to=to, 
-            from_=from_ if from_ else API_SETTINGS['from_'],
-            body=body
+            to, from_ if from_ else API_SETTINGS['from_'], body
         )
         return response

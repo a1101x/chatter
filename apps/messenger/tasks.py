@@ -16,9 +16,9 @@ def send_templated_sms(key, recipient, body=None):
 
         if body:
             text = sms.body.format(*body)
-            twilio.create(to=recipient, body=text)
+            twilio.create(recipient, text)
         else:
-            twilio.create(to=recipient, body=sms.body)
+            twilio.create(recipient, sms.body)
     except (SMSTemplate.DoesNotExist, KeyError) as e:
         return str(e)
 
@@ -28,4 +28,4 @@ def send_simple_sms(body, recipient):
     """
     Send simple sms, do not user template from db.
     """
-    twilio.create(to=recipient, body=body)
+    twilio.create(recipient, body)

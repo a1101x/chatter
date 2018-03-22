@@ -20,11 +20,7 @@ def send_templated_email(key, recipient_list, context={}, template_name=None, fr
 
         email = mail.render(context, template_name)
         mailgun.send(
-            from_email,
-            recipient_list,
-            email['subject'],
-            email['message'],
-            email['html_message']
+            from_email, recipient_list, email['subject'], email['message'], email['html_message']
         )
     except (EmailTemplate.DoesNotExist, KeyError) as e:
         return str(e)

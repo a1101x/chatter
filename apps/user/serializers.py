@@ -11,7 +11,7 @@ from apps.mailer.choices import EMAIL_TYPES
 from apps.mailer.tasks import send_templated_email
 from apps.messenger.choices import SMS_TYPES
 from apps.messenger.tasks import send_templated_sms
-from apps.phone.models import Phone, PhoneVerificationCode
+from apps.phone.models import Phone
 from apps.user.models import UserActivationCode
 
 User = get_user_model()
@@ -167,13 +167,13 @@ class UserActivationSerializer(ActivationCodeSerializer):
         try:
             code = UserActivationCode.objects.filter(user=self.user).latest('created')
 
-            if code.time_expired < timezone.now():
-                raise serializers.ValidationError(
-                    _('The activation code is already expired.'),
-                    code=status.HTTP_400_BAD_REQUEST
-                )
-
-            if code.code != value:
+            if code.code == value:
+                if code.time_expired < timezone.now():
+                    raise serializers.ValidationError(
+                        _('The activation code is already expired.'),
+                        code=status.HTTP_400_BAD_REQUEST
+                    )
+            else:
                 raise serializers.ValidationError(
                     _('The activation code is not valid for this user.'),
                     code=status.HTTP_400_BAD_REQUEST

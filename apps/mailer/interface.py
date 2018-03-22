@@ -1,6 +1,5 @@
 import requests
 from django.conf import settings
-from twilio.rest import Client
 
 API_SETTINGS = {
     'api': settings.MAILGUN_API_KEY,

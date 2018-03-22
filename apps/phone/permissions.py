@@ -3,7 +3,7 @@ from rest_framework import permissions
 
 class IsPhoneNumberOwnerOrReadOnly(permissions.BasePermission):
     """
-    Allow access on PUT/DELETE only for phone number owner.
+    Allow access on PATCH/PUT/DELETE only for phone number owner.
     """
     message = 'Only phone number owner can edit phone.'
 
