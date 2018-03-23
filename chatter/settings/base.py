@@ -37,7 +37,8 @@ INSTALLED_APPS = [
     'apps.phone',
     'apps.location',
     'apps.mailer',
-    'apps.messenger'
+    'apps.messenger',
+    'apps.chat',
 ]
 
 SITE_ID = 1
@@ -220,3 +221,30 @@ ACTIVATION_CODE_LIFETIME = env.int('ACTIVATION_CODE_LIFETIME', default=30)
 TWILIO_ACCOUNT_SID = env.str('TWILIO_ACCOUNT_SID', default='')
 TWILIO_AUTH_TOKEN = env.str('TWILIO_AUTH_TOKEN', default='')
 TWILIO_NUMBER = env.str('TWILIO_NUMBER', default='')
+
+NOTIFY_USERS_ON_ENTER_OR_LEAVE_ROOMS = True
+
+MSG_TYPE_MESSAGE = 0
+MSG_TYPE_WARNING = 1 
+MSG_TYPE_ALERT = 2
+MSG_TYPE_MUTED = 3
+MSG_TYPE_ENTER = 4
+MSG_TYPE_LEAVE = 5
+
+MESSAGE_TYPES_CHOICES = (
+    (MSG_TYPE_MESSAGE, 'MESSAGE'),
+    (MSG_TYPE_WARNING, 'WARNING'),
+    (MSG_TYPE_ALERT, 'ALERT'),
+    (MSG_TYPE_MUTED, 'MUTED'),
+    (MSG_TYPE_ENTER, 'ENTER'),
+    (MSG_TYPE_LEAVE, 'LEAVE'),
+)
+
+MESSAGE_TYPES_LIST = [
+    MSG_TYPE_MESSAGE,
+    MSG_TYPE_WARNING,
+    MSG_TYPE_ALERT,
+    MSG_TYPE_MUTED,
+    MSG_TYPE_ENTER,
+    MSG_TYPE_LEAVE,
+]

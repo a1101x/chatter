@@ -30,8 +30,11 @@ django-cors-headers==2.2.0
 django-countries==5.2
 django-debug-toolbar==1.9.1
 django-elasticsearch-debug-toolbar==1.2.0
+django-elasticsearch-dsl==0.4.4
+django-elasticsearch-dsl-drf==0.7
 django-filter==1.1.0
 django-map-widgets==0.1.9
+django-nine==0.1.13
 django-phonenumber-field==2.0.0
 django-redis==4.9.0
 django-rest-auth==0.9.3
@@ -39,7 +42,7 @@ django-rest-swagger==2.1.2
 djangorestframework==3.7.7
 djangorestframework-gis==0.12
 djangorestframework-jwt==1.11.0
-elasticsearch==6.1.1
+elasticsearch==6.2.0
 elasticsearch-dsl==6.1.0
 envparse==0.2.0
 factory-boy==2.10.0
@@ -76,7 +79,7 @@ pycodestyle==2.3.1
 PyJWT==1.6.0
 pylint==1.8.2
 PySocks==1.6.8
-python-dateutil==2.6.1
+python-dateutil==2.7.0
 python3-openid==3.1.0
 pytz==2018.3
 ratelim==0.1.6

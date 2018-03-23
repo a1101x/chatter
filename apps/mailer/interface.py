@@ -1,4 +1,6 @@
+import abc
 import requests
+
 from django.conf import settings
 
 API_SETTINGS = {
@@ -7,9 +9,9 @@ API_SETTINGS = {
 }
 
 
-class MailgunInterface(object):
+class MailgunInterfaceBase(abc.ABC):
     """
-    Parent class for using mailgun, used by other classes (in future?).
+    Base Mailgun interface.
     """
     def __init__(self):
         """
@@ -20,7 +22,19 @@ class MailgunInterface(object):
 
     def send(self, from_=None, to_=None, subject=None, text=None, html=None):
         """
-        Primary send API method.
+        Primary send email API method.
+        Need to implement in child class.
+        """
+        raise NotImplementedError
+
+
+class MailgunInterface(MailgunInterfaceBase):
+    """
+    Parent class for using mailgun, used by other classes (in future?).
+    """
+    def send(self, from_=None, to_=None, subject=None, text=None, html=None):
+        """
+        Primary send email API method.
         """
         response = requests.post(
             self.base_url,
