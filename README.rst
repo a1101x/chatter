@@ -35,6 +35,20 @@ PostGis
   CREATE EXTENSION postgis;
 
 
+Docker
+--------
+.. code:: sh
+
+  docker-compose build
+
+.. code:: sh
+
+  docker-compose up -d
+
+.. code:: sh
+
+  docker-compose run --rm web python manage.py migrate  
+
 Server
 --------
 Run migrations:

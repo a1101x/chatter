@@ -1,0 +1,72 @@
+version: "2"
+
+services:
+  postgres:
+    restart: always
+    image: postgres:latest
+    container_name: chatter_postgres
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_DB: chatter
+      POSTGRES_USER: chatter
+      POSTGRES_PASSWORD: chatter
+
+  redis:
+    restart: always
+    image: redis:latest
+    ports:
+      - "6379:6379"
+
+  rabbitmq:
+    image: tutum/rabbitmq
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+
+  elasticsearch:
+    restart: always
+    image: docker.elastic.co/elasticsearch/elasticsearch:6.2.3
+    container_name: elasticsearch
+    environment:
+      - cluster.name=docker-cluster
+      - bootstrap.memory_lock=true
+      - "ES_JAVA_OPTS=-Xms512m -Xmx512m"
+    ulimits:
+      memlock:
+        soft: -1
+        hard: -1
+    ports:
+      - 9200:9200
+
+  web:
+    restart: always
+    build: .
+    command: sh ./run_django.sh
+    volumes:
+      - .:/code
+    ports:
+      - "8000:8000"
+    links:
+      - postgres
+      - rabbitmq
+      - redis
+
+  worker:
+    restart: always
+    build: .
+    command: sh ./run_celery_worker.sh
+    volumes:
+      - .:/code
+    links:
+      - rabbitmq
+
+  flower:
+    restart: always
+    build: .
+    command: sh ./run_flower_worker.sh
+    volumes:
+      - .:/code
+    links:
+      - rabbitmq
+      
