@@ -92,7 +92,7 @@ sqlparse==0.2.4
 text-unidecode==1.2
 tornado==5.0
 twilio==6.10.5
-Twisted==17.9.0
+Twisted==22.1.0
 txaio==2.9.0
 uritemplate==3.0.0
 urllib3==1.22
