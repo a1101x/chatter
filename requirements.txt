@@ -39,7 +39,7 @@ django-phonenumber-field==2.0.0
 django-redis==4.9.0
 django-rest-auth==0.9.3
 django-rest-swagger==2.1.2
-djangorestframework==3.7.7
+djangorestframework==3.11.2
 djangorestframework-gis==0.12
 djangorestframework-jwt==1.11.0
 elasticsearch==6.2.0
